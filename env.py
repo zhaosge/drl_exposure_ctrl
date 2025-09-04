@@ -14,8 +14,11 @@ import cv2
 import yaml
 import torch
 from scipy.interpolate import UnivariateSpline
-
-
+import rospy
+from sensor_msgs.msg import Image
+from std_msgs.msg import String, Float32, Header
+from cv_bridge import CvBridge, CvBridgeError
+from fsd_common_msgs.msg import YoloCone, ConeDetections
 class PhotometricSimulator():
     def __init__(self, str_crf_filepath):
         self.str_crf_filepath = str_crf_filepath
@@ -158,7 +161,7 @@ class RewardStat():
         return - np.power(np.abs(np.mean(img1) - self.mean_target), 0.5)
 
     def __calc_reward_flk(self, img0, img1):
-        return - np.power(np.abs(np.mean(img1) - np.mean(img0)), 0.5)
+        return - np.power(np.999999999999999999999999abs(np.mean(img1) - np.mean(img0)), 0.5)
 
 
 class RewardFeat():
@@ -223,7 +226,77 @@ class RewardFeat():
 
         return r_detect, r_match
 
+class RewardYOLO():
+    def __init__(self, params):
+        try:
+            rospy.init_node('drl_exposure_env', anonymous=True)
+        except rospy.exceptions.ROSException:
+            pass # 节点已初始化
 
+        self.bridge = CvBridge()
+        self.image_pub_topic = params.get('ros_image_pub_topic', '/drl_exposure/image_raw')
+        self.detection_sub_topic = params.get('ros_detection_sub_topic', '/yolo_detector/cone_detections')
+        
+        self.image_pub = rospy.Publisher(self.image_pub_topic, Image, queue_size=1)
+
+        # 奖励权重
+        self.w_num_red = params.get('rwd_w_yolo_num_red', 0.1)
+        self.w_num_blue = params.get('rwd_w_yolo_num_blue', 0.1)
+        self.w_num_yellow = params.get('rwd_w_yolo_num_yellow', 0.2)
+        self.w_conf = params.get('rwd_w_yolo_conf', 0.5)
+
+        rospy.loginfo(f"RewardROS initialized. Publishing to {self.image_pub_topic}, Subscribing to {self.detection_sub_topic}.")
+
+    def calc_reward(self, state):
+        # 1. 准备并发布图像
+        img_float = np.squeeze(state[-1, :, :])
+        img_uint8 = (img_float * 255).astype(np.uint8)
+        
+        try:
+            ros_image = self.bridge.cv2_to_imgmsg(img_uint8, "mono8")
+            ros_image.header.stamp = rospy.Time.now()
+            self.image_pub.publish(ros_image)
+        except CvBridgeError as e:
+            rospy.logerr(f"CvBridge Error: {e}")
+            return 0, 0
+
+        # 2. 等待包含所有检测结果的单条消息
+        try:
+            # 这里的 ConeDetections 是您自定义的消息类型
+            detections_msg = rospy.wait_for_message(self.detection_sub_topic, ConeDetections, timeout=1.0)
+        except rospy.ROSException:
+            rospy.logwarn(f"Timeout waiting for message on {self.detection_sub_topic}. No reward.")
+            return 0, 0
+
+        # 3. 遍历检测数组并计算奖励
+        num_red, num_blue, num_yellow = 0, 0, 0
+        total_confidence = 0.0
+        
+        # 遍历消息中的 cone_detections 数组
+        for cone in detections_msg.cone_detections:
+            color = cone.color.data
+            confidence = cone.colorConfidence.data
+            
+            if color == 'r':
+                num_red += 1
+            elif color == 'b':
+                num_blue += 1
+            elif color == 'y':
+                num_yellow += 1
+            
+            total_confidence += confidence
+        
+        # 基于数量的奖励
+        r_num = (num_red * self.w_num_red + 
+                 num_blue * self.w_num_blue + 
+                 num_yellow * self.w_num_yellow)
+        
+        # 基于平均置信度的奖励
+        num_detections = len(detections_msg.cone_detections)
+        avg_confidence = total_confidence / num_detections if num_detections > 0 else 0.0
+        r_conf = avg_confidence * self.w_conf
+
+        return r_num, r_conf
 class ExposureEnv():
     def __init__(self, log, params, str_crf_filepath, len_episode):
         # parameters
@@ -257,6 +330,8 @@ class ExposureEnv():
             self.reward_cal = RewardStat(params)
         if params['rwd_mode'] == "feat":
             self.reward_cal = RewardFeat(params)
+        if params['rwd_mode'] == "yolo": # 添加此行
+            self.reward_cal = RewardYOLO(params) # 添加此行
 
         # add sequences and states from yaml file
         with open(params['env_seq_filepath'], 'r') as f:

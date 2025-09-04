@@ -57,9 +57,15 @@ params = {'device': torch.device("cuda") if torch.cuda.is_available() else torch
           'env_expo_lb': 50,
           'env_expo_ub': 2000000,
           'env_expo_init': 10000,
-
+          
+          'rwd_mode': "yolo", 
+          # 为ROS奖励定义权重
+          'rwd_w_yolo_num_red': 0.1,
+          'rwd_w_yolo_num_blue': 0.1,
+          'rwd_w_yolo_num_yellow': 0.2,
+          'rwd_w_yolo_conf': 0.5,
           #   'rwd_mode': "stat",
-          'rwd_mode': "feat",
+          #   'rwd_mode': "feat",
           'rwd_mean_target': 0.5,
           'rwd_w_flk': 0.2,
           'rwd_w_detect': 0.005,
