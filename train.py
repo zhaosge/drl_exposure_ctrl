@@ -39,12 +39,12 @@ log = Log(save_path)
 params = {'device': torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
           'state_dim': (4, 84, 84),
           'action_dim': 1,
-          'len_episode': 500,
+          'len_episode': 5,
 
           'rb_buffer_size': 50000,
 
           'tr_warm_size': 5000,
-          'tr_n_episodes': 1000000,
+          'tr_n_episodes': 20000,
           'tr_n_update': 50,
           'tr_n_save': 1000,
 
@@ -56,15 +56,15 @@ params = {'device': torch.device("cuda") if torch.cuda.is_available() else torch
           'env_img_ori_w': 256,
           'env_expo_lb': 50,
           'env_expo_ub': 2000000,
-          'env_expo_init': 10000,
+          'env_expo_init': 20000,
           
-          'rwd_mode': "yolo", 
+        #   'rwd_mode': "yolo", 
           # 为ROS奖励定义权重
           'rwd_w_yolo_num_red': 0.1,
           'rwd_w_yolo_num_blue': 0.1,
           'rwd_w_yolo_num_yellow': 0.2,
           'rwd_w_yolo_conf': 0.5,
-          #   'rwd_mode': "stat",
+            'rwd_mode': "stat",
           #   'rwd_mode': "feat",
           'rwd_mean_target': 0.5,
           'rwd_w_flk': 0.2,

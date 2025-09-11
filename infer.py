@@ -16,7 +16,7 @@ params = {'device': torch.device("cuda") if torch.cuda.is_available() else torch
           'state_dim': (4, 84, 84),
           'action_dim': 1,
           'len_episode': 100000,
-
+            'save_img': True,
           'env_mode_test': True,
           'env_data_argumentation': True,
           'env_seq_filepath': "config/infer.yaml",
@@ -39,7 +39,7 @@ params = {'device': torch.device("cuda") if torch.cuda.is_available() else torch
 
 
 agent = Actor(params['state_dim'], params['action_dim'], params['sac_hidden_dim'])
-agent.load_state_dict(torch.load('model/actor_drl_feat_10000.pth'))
+agent.load_state_dict(torch.load('model\\actor_stat_000019000.pth'))
 agent.eval()
 
 # setup env
@@ -51,7 +51,7 @@ count = 0
 s, _ = env.reset(frame_id=0)
 done = False
 while not done:
-    env.render(1)
+    env.render(wait_ms=1, save_img=params['save_img'])
     s_in = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0)
     t0 = time.time()
     a, _ = agent(s_in, True, False)

@@ -1,24 +1,20 @@
-seqs_root: /home/uni/Data/drl_exposure_ctrl
+seqs_root: F:\AI\
 sequences: 
   -
-    seq_name: train_indoor
-  -
-    seq_name: train_outdoor
-  -
-    seq_name: train_parking
+    seq_name: test_chejian
 states: 
       - 
-        expo_t: 50
-        gain: 0
+        expo_t: 200
+        gain: 1
       - 
-        expo_t: 198
-        gain: 0
+        expo_t: 400
+        gain: 1
       - 
-        expo_t: 1008
-        gain: 0
+        expo_t: 1000
+        gain: 1
       - 
-        expo_t: 5007
-        gain: 0
+        expo_t: 5000
+        gain: 1
       - 
-        expo_t: 19994
-        gain: 0
+        expo_t: 20000
+        gain: 1

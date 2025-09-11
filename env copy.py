@@ -14,11 +14,11 @@ import cv2
 import yaml
 import torch
 from scipy.interpolate import UnivariateSpline
-# import rospy
-# from sensor_msgs.msg import Image
-# from std_msgs.msg import String, Float32, Header
-# from cv_bridge import CvBridge, CvBridgeError
-# from fsd_common_msgs.msg import YoloCone, ConeDetections
+import rospy
+from sensor_msgs.msg import Image
+from std_msgs.msg import String, Float32, Header
+from cv_bridge import CvBridge, CvBridgeError
+from fsd_common_msgs.msg import YoloCone, ConeDetections
 class PhotometricSimulator():
     def __init__(self, str_crf_filepath):
         self.str_crf_filepath = str_crf_filepath
@@ -60,7 +60,7 @@ class PhotometricSimulator():
 
 
 class Sequence():
-    def __init__(self, str_cam_filepath, seq_state, img_w, img_h):
+    def __init__(self, str_cam_filepath, str_expo_filepath, seq_state, img_w, img_h):
         print(f"loading sequence {str_cam_filepath}")
         data = np.loadtxt(str_cam_filepath)
         self.seq_state = seq_state
@@ -90,15 +90,10 @@ class Sequence():
 
         # map from bracket_id 2 image_id of the first image
         self.bracket_map = np.where(self.state_id == 0)[0]
-        # ===> 在这里添加调试代码 <===
-        print(f"DEBUG: 序列处理完毕。")
-        print(f"DEBUG: 过滤后总帧数: {len(self.image_id)}")
-        print(f"DEBUG: 有效起始帧 (bracket) 数量: {self.bracket_map.shape[0]}")
-        # ==========================
-        
+
         # image name list
         self.img_names = self.__generate_image_path(str_cam_filepath)
-        self.expo_base = self.expo[self.bracket_map]
+        self.expo_base = self.__load_expo_from_file(str_expo_filepath)
 
         self.img_h = img_h
         self.img_w = img_w
@@ -124,17 +119,9 @@ class Sequence():
             idx_e = self.bracket_map[bracket_id + 1]
             expo_tmp = self.expo[idx_s:idx_e]
 
-        indices = np.where(expo >= expo_tmp)[0]
-        if len(indices) == 0:
-            # 如果 expo 小于 bracket 中的所有曝光值，则使用 bracket 的第一帧
-            idx_in_bracket = 0
-        else:
-            # 否则，使用最后一个满足条件的帧
-            idx_in_bracket = indices[-1]
-
+        idx_in_bracket = np.where(expo >= expo_tmp)[0][-1]
         idx = self.bracket_map[bracket_id] + idx_in_bracket
         expo_base = expo_tmp[idx_in_bracket]
-        
 
         return False, self.images[idx, :, :], expo_base
 
@@ -150,7 +137,7 @@ class Sequence():
         folder_name, _ = os.path.splitext(str_cam_filepath)
         img_names = []
         for img_id in self.image_id:
-            img_name = os.path.join(folder_name, f"{img_id:08d}.png")
+            img_name = os.path.join(folder_name, f"{img_id:08d}.tif")
             img_names.append(img_name)
         return img_names
 
@@ -174,7 +161,7 @@ class RewardStat():
         return - np.power(np.abs(np.mean(img1) - self.mean_target), 0.5)
 
     def __calc_reward_flk(self, img0, img1):
-        return - np.power(np.abs(np.mean(img1) - np.mean(img0)), 0.5)
+        return - np.power(np.999999999999999999999999abs(np.mean(img1) - np.mean(img0)), 0.5)
 
 
 class RewardFeat():
@@ -328,16 +315,12 @@ class ExposureEnv():
         self.expo = params['env_expo_init']
         self.state_ori = None
         self.state_out = None
-        self.img_base = None
         self.b_data_argumentation = params['env_data_argumentation']
         self.b_time_reverse = False
         self.b_flip_horizontal = False
         self.b_flip_vertical = False
         self.b_time_acc = False
         self.time_acc_ratio = 1
-        self.render_output_dir = "render_output"
-        if not os.path.exists(self.render_output_dir):
-            os.makedirs(self.render_output_dir)
 
         # simulator
         self.simulator = PhotometricSimulator(str_crf_filepath)
@@ -366,9 +349,9 @@ class ExposureEnv():
         for seq_config in config['sequences']:
             filepath_img = os.path.join(
                 seqs_root, seq_config['seq_name'], "cam0.txt")
-            # filepath_expo_ref = os.path.join(
-            #     seqs_root, seq_config['seq_name'], "expo_ref.txt")
-            seq = Sequence(filepath_img, states,
+            filepath_expo_ref = os.path.join(
+                seqs_root, seq_config['seq_name'], "expo_ref.txt")
+            seq = Sequence(filepath_img, filepath_expo_ref, states,
                            params['env_img_ori_w'], params['env_img_ori_h'])
             self.add_sequence(seq)
             if not params['env_mode_test']:
@@ -416,10 +399,8 @@ class ExposureEnv():
         if expo == None:
             expo = self.seqs[seq_id].expo_base[frame_id]
             if not self.b_test:
-                # 使用对数均匀分布进行随机化，确保 expo 为正值
-                # 在原始曝光值的 1/4 到 4 倍之间随机选择
-                log_ratio = (np.random.random() - 0.5) * np.log(16) # log(1/4) to log(4)
-                expo = expo * np.exp(log_ratio)
+                ratio = np.random.random() * 2 - 1.0
+                expo = expo * ratio
 
             if expo < self.expo_lb:
                 expo = self.expo_lb
@@ -431,7 +412,6 @@ class ExposureEnv():
         self.cur_frame = frame_id
         self.expo = expo
         self.episode_count = 0
-        self.img_base = None
 
         # init update
         self.state_ori = None
@@ -507,8 +487,6 @@ class ExposureEnv():
                 f"out_of_range: {self.cur_frame} of {self.seqs[self.cur_seq].get_bracket_size()}")
             return False
 
-        self.img_base = img_base
-
         # synthesis
         img_syn = self.simulator.img_synthesis(img_base, expo_base, self.expo)
         if self.b_flip_horizontal:
@@ -533,36 +511,10 @@ class ExposureEnv():
     def random_action(self):
         return np.random.random() * 2 - 1.0
 
-    def render(self, wait_ms=10, save_img=False):
-        img_syn = (np.squeeze(self.state_ori[-1, :, :]) * 255).astype(np.uint8)
-        
-        if self.img_base is not None:
-            # 将 uint16 原始图像转换为 uint8 用于显示
-            img_base_u8 = (self.img_base / 256).astype(np.uint8)
-            # 如果图像是灰度的，转换为 BGR 以便可以添加文字
-            img_base_display = cv2.cvtColor(img_base_u8, cv2.COLOR_GRAY2BGR)
-            img_syn_display = cv2.cvtColor(img_syn, cv2.COLOR_GRAY2BGR)
-            
-            # 在图像上添加标签
-            cv2.putText(img_base_display, f'Original (Frame: {self.cur_frame})', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-            cv2.putText(img_syn_display, f'Synthesized (Expo: {self.expo:.4f})', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-
-            # 并排显示
-            display_img = np.hstack((img_base_display, img_syn_display))
-        else:
-            # 如果没有原始图像，只准备合成图像
-            display_img = cv2.cvtColor(img_syn, cv2.COLOR_GRAY2BGR)
-            cv2.putText(display_img, f'Synthesized (Frame: {self.cur_frame}, Expo: {self.expo:.4f})', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-
-        # 显示图像
-        cv2.imshow("render", display_img)
+    def render(self, wait_ms=10):
+        img_cur = (np.squeeze(self.state_ori[-1, :, :]) * 255).astype(np.uint8)
+        cv2.imshow("render", img_cur)
         cv2.waitKey(wait_ms)
-
-        # 保存图像
-        if save_img:
-            save_path = os.path.join(self.render_output_dir, f"seq{self.cur_seq}_frame{self.cur_frame}.png")
-            cv2.imwrite(save_path, display_img)
-            print(f"Saved rendered image to {save_path}")
 
     def add_sequence(self, sequence):
         self.seqs.append(sequence)

@@ -1,22 +1,22 @@
-seqs_root: F:\AI\drl_exposure_ctrl
+seqs_root: F:\AI
 sequences: 
   -
-    seq_name: test_corridor
+    seq_name: test_chejian
     # seq_name: test_countyard
     # seq_name: test_parking
 states: 
       - 
-        expo_t: 50
-        gain: 0
+        expo_t: 200
+        gain: 1
       - 
-        expo_t: 198
-        gain: 0
+        expo_t: 400
+        gain: 1
       - 
-        expo_t: 1008
-        gain: 0
+        expo_t: 1000
+        gain: 1
       - 
-        expo_t: 5007
-        gain: 0
+        expo_t: 5000
+        gain: 1
       - 
-        expo_t: 19994
-        gain: 0
+        expo_t: 20000
+        gain: 1

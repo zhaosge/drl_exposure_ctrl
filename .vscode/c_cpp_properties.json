@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/muzi/catkin_ws/devel/include/**",
+        "/opt/opencv-4.11/include/**",
+        "/opt/ros/noetic/include/**",
+        "/opt/opencv-4.11/include/**",
+        "/home/muzi/A03/src/camera_sua630/cv_bridge_411/include/**",
+        "/home/muzi/A03/src/camera_sua630/mv_cone3d/include/**",
+        "/home/muzi/A03/src/2_camera/yolov5_detect/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
