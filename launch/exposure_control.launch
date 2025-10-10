@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- 曝光控制节点 -->
+    <node name="exposure_control_node" pkg="drl_exposure_ctrl" type="infer.py" output="screen">
+        <param name="model_path" value="$(find drl_exposure_ctrl)/model/actor_drl_feat_10000.pth"/>
+        <remap from="/perception/camera/mv_cam1" to="/perception/camera/mv_cam1"/>
+        <remap from="/camera/exposure_control" to="/camera/exposure_control"/>
+    </node>
+    
+    <!-- 可选：启动rqt_image_view来查看图像 -->
+    <!-- <node name="image_view" pkg="rqt_image_view" type="rqt_image_view" args="/perception/camera/mv_cam1"/> -->
+    
+    <!-- 可选：启动rqt_plot来查看参数变化 -->
+    <!-- <node name="param_plot" pkg="rqt_plot" type="rqt_plot" args="/camera/exposure_control/x /camera/exposure_control/y /camera/exposure_control/z"/> -->
+</launch>

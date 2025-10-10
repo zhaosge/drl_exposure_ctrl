@@ -4,3 +4,5 @@ log
 model/*.pth
 !model/actor_drl_feat_10000.pth
 !model/actor_drl_stat_10000.pth
+.vscode/c_cpp_properties.json
+.gitignore

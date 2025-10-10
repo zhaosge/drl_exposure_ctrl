@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>drl_exposure_ctrl</name>
+  <version>1.0.0</version>
+  <description>Deep Reinforcement Learning based camera exposure control</description>
+
+  <maintainer email="shuyang.zhang1995@gmail.com">Shuyang Zhang</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <build_depend>rospy</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+
+  <export>
+  </export>
+</package>
