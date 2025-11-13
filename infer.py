@@ -46,9 +46,9 @@ class ExposureControlNode:
         self.expo_ub = 2000000
         
         # 快门速度和增益范围
-        self.shutter_min = 100  # 最小快门速度 (us)
+        self.shutter_min = 25  # 最小快门速度 (us)
         self.shutter_max = 20000  # 最大快门速度 (us)
-        self.gain_min = 8  # 最小增益
+        self.gain_min = 4  # 最小增益
         self.gain_max = 36  # 最大增益
         
         # 性能统计
